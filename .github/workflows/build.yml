@@ -362,23 +362,25 @@ jobs:
         id: cache
         with:
           path: build/.cache
-          key: pakku-cache-${{ hashFiles('pakku-lock.json') }}
-          restore-keys: pakku-cache-
+          key: pakku-cache-multimc-${{ hashFiles('pakku-lock.json') }}-${{ hashFiles('pakku.json') }}
+          restore-keys: |
+            pakku-cache-multimc-${{ hashFiles('pakku-lock.json') }}-
+            pakku-cache-multimc-
 
       - name: 📦 Export
         run: |
           curl https://github.com/juraj-hrivnak/pakku/releases/latest/download/pakku.jar -o pakku.jar -L -J
-          java -jar pakku.jar --debug fetch
+          java -jar pakku.jar --debug fetch --force
           java -jar pakku.jar --debug export
           
       - name: 📁 Move files
         run: |
           ls
           mkdir -p .pakku/multimc-overrides/flame
-          mkdir -p .pakku/multimc-overrides/mods
+          mkdir -p .pakku/multimc-overrides/.minecraft
           mv -vf ./build/.cache/curseforge/manifest.json .pakku/multimc-overrides/flame/manifest.json
           mv -vf ./build/.cache/curseforge/overrides .pakku/multimc-overrides/.minecraft
-          mv -vf ./mods .pakku/multimc-overrides/.minecraft/mods
+          mv -vf ./mods .pakku/multimc-overrides/.minecraft/
           cd .pakku/multimc-overrides/
           
           zip -r ${{ needs.info.outputs.project_full_name }}-multimc.zip icon.png mmc-pack.json instance.cfg .minecraft/ flame/
