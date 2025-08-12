@@ -5,6 +5,9 @@ on:
     branches:
       - dev
       - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -302,11 +305,21 @@ jobs:
         run: |
           curl https://github.com/juraj-hrivnak/pakku/releases/latest/download/pakku.jar -o pakku.jar -L -J
           java -jar pakku.jar export
+          echo "✔️ Export completed"
+          echo "Contents of build directory:"
+          find build -type f -name "*.zip" -o -name "*.mrpack" | head -10
 
       - name: 📁 Rename artifact curseforge
         run: |
           cd ./build/curseforge/
-          mv *.zip $(basename -s .zip *.zip)-curseforge.zip
+          ls -la
+          if [ -f *.zip ]; then
+            mv *.zip $(basename -s .zip *.zip)-curseforge.zip
+            echo "✔️ Renamed CurseForge artifact"
+          else
+            echo "❌ No .zip file found in curseforge directory"
+            exit 1
+          fi
           
       - name: 🚀 Upload artifact CurseForge
         uses: actions/upload-artifact@v4.6.2
@@ -318,7 +331,13 @@ jobs:
       - name: 📁 Rename artifact modrinth
         run: |
           cd ./build/modrinth/
-          mv *.mrpack $(basename -s .mrpack *.mrpack)-modrinth.mrpack
+          ls -la
+          if [ -f *.mrpack ]; then
+            mv *.mrpack $(basename -s .mrpack *.mrpack)-modrinth.mrpack
+            echo "✔️ Renamed Modrinth artifact"
+          else
+            echo "⚠️ No .mrpack file found in modrinth directory"
+          fi
 
       - name: 🚀 Upload artifact modrinth
         uses: actions/upload-artifact@v4.6.2
@@ -330,7 +349,14 @@ jobs:
       - name: 📁 Rename artifact server
         run: |
           cd ./build/serverpack/
-          mv *.zip $(basename -s .zip *.zip)-serverpack.zip
+          ls -la
+          if [ -f *.zip ]; then
+            mv *.zip $(basename -s .zip *.zip)-serverpack.zip
+            echo "✔️ Renamed serverpack artifact"
+          else
+            echo "❌ No .zip file found in serverpack directory"
+            exit 1
+          fi
 
       - name: 🚀 Upload artifact server
         uses: actions/upload-artifact@v4.6.2
