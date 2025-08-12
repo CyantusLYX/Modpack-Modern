@@ -59,16 +59,21 @@ jobs:
         id: latest_tag
         shell: bash
         run: |
-          tag=$(git describe --tags --abbrev=0 origin/main)
+          set -e
+          git fetch --tags origin
+          tag=$(git describe --tags --abbrev=0 origin/main 2>/dev/null || true)
           if [ -z "$tag" ]; then
-            echo "❌ Latest tag not found" && exit 1
+            echo "⚠️ Latest tag not found; continuing without diff"
+            echo "has_tag=false" >> $GITHUB_OUTPUT
           else
             echo "✔️ Latest tag found: $tag"
+            echo "has_tag=true" >> $GITHUB_OUTPUT
             echo "tag=$tag" >> $GITHUB_OUTPUT
           fi
         
       - name: 🔍 Check pakku-lock.json in previous tag
         id: check_pakku_lock_prev
+  if: ${{ steps.latest_tag.outputs.has_tag == 'true' }}
         shell: bash
         run: |
           if git cat-file -e ${{ steps.latest_tag.outputs.tag }}:./pakku-lock.json 2>/dev/null; then
@@ -81,7 +86,7 @@ jobs:
         
       - name: 📁 Check and copy pakku-lock.json from previous tag
         id: check_copy_lock
-        if: steps.check_pakku_lock_prev.outputs.file_found
+  if: ${{ steps.check_pakku_lock_prev.outputs.file_found == 'true' }}
         shell: bash
         run: |
           git show tags/${{ steps.latest_tag.outputs.tag }}:./pakku-lock.json > ./pakku-lock-prev.json
@@ -93,7 +98,7 @@ jobs:
         
       - name: 📦 Download pakku.jar
         id: download_pakku
-        if: steps.check_pakku_lock_prev.outputs.file_found
+  if: ${{ steps.check_pakku_lock_prev.outputs.file_found == 'true' }}
         shell: bash
         run: |
           curl https://github.com/juraj-hrivnak/pakku/releases/latest/download/pakku.jar -o pakku.jar -L -J
@@ -101,7 +106,7 @@ jobs:
         
       - name: 🔄 Run pakku diff
         id: pakku_diff
-        if: steps.check_pakku_lock_prev.outputs.file_found
+  if: ${{ steps.check_pakku_lock_prev.outputs.file_found == 'true' }}
         shell: bash
         run: |
           java -jar pakku.jar diff -v --markdown PROJECTS_DIFF.md ./pakku-lock-prev.json ./pakku-lock.json
@@ -113,7 +118,7 @@ jobs:
         
       - name: 📝 Read PROJECTS_DIFF.md to variable
         id: read_diff
-        if: steps.check_pakku_lock_prev.outputs.file_found
+  if: ${{ steps.check_pakku_lock_prev.outputs.file_found == 'true' }}
         shell: bash
         run: |
           echo "📝 Reading PROJECTS_DIFF.md to variable..."
