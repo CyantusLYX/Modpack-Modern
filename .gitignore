@@ -124,3 +124,7 @@ icon.png
 .pakku/server-overrides/user_jvm_args.txt
 
 /tacz/tacz_default_gun
+
+#just for refrence
+/extra
+extra.zip

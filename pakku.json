@@ -1,14 +1,13 @@
 {
-    "name": "TerraFirmaGreg-Modern",
+    "name": "TerraFirmaGreg-Modern-CyRepacked",
     "version": "DEV",
-    "release_type": "release",
-    "description": "An innovative modpack that contains GregTech and TerraFirmaCraft on 1.20.x.",
+    "description": "An innovative modpack that contains GregTech and TerraFirmaCraft on 1.20.x, Repacked by Cyantus :)",
     "author": "Exception, Xikaro",
     "overrides": [
         "config",
         "defaultconfigs",
         "kubejs",
-		"tacz",
+        "tacz",
         "!kubejs/probe/**"
     ],
     "server_overrides": [
