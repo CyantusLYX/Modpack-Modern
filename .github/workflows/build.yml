@@ -453,8 +453,32 @@ jobs:
           mkdir -p .pakku/multimc-overrides/flame
           mkdir -p .pakku/multimc-overrides/.minecraft
           mv -vf ./build/.cache/curseforge/manifest.json .pakku/multimc-overrides/flame/manifest.json
-          mv -vf ./build/.cache/curseforge/overrides .pakku/multimc-overrides/.minecraft
-          mv -vf ./mods .pakku/multimc-overrides/.minecraft/
+          # Flatten overrides content directly into .minecraft (no nested overrides folder)
+          if [ -d ./build/.cache/curseforge/overrides ]; then
+            echo "Flattening overrides into .minecraft..."
+            if command -v rsync >/dev/null 2>&1; then
+              rsync -a ./build/.cache/curseforge/overrides/ .pakku/multimc-overrides/.minecraft/
+            else
+              cp -a ./build/.cache/curseforge/overrides/. .pakku/multimc-overrides/.minecraft/
+            fi
+          else
+            echo "ℹ️ No overrides directory found; skipping flatten."
+          fi
+
+          # Ensure mods end up as .minecraft/mods (merge if exists)
+          if [ -d ./mods ]; then
+            mkdir -p .pakku/multimc-overrides/.minecraft/mods
+            if command -v rsync >/dev/null 2>&1; then
+              rsync -a ./mods/ .pakku/multimc-overrides/.minecraft/mods/
+            else
+              cp -a ./mods/. .pakku/multimc-overrides/.minecraft/mods/
+            fi
+          else
+            echo "ℹ️ No ./mods directory at repo root; skipping."
+          fi
+
+          echo "Directory structure under .minecraft (depth 2):"
+          find .pakku/multimc-overrides/.minecraft -maxdepth 2 -type d -print | sed 's/^/ - /'
           cd .pakku/multimc-overrides/
           
           echo "Final manifest check:"
