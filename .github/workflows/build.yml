@@ -164,7 +164,7 @@ jobs:
         uses: mukunku/tag-exists-action@v1.6.0
         id: check_tag
         with:
-          tag: ${{ steps.changelog.outputs.version }}
+          tag: ${{ steps.pakku_info.outputs.version }}
 
       - name: 🔍 Check
         id: check
@@ -178,7 +178,7 @@ jobs:
           if ${{ env.DEV_ENVIRONMENT == 'true' }}; then
             echo "project_version=build_#${{ github.run_number }}" >> $GITHUB_OUTPUT
           else
-            echo "project_version=${{ steps.changelog.outputs.version }}" >> $GITHUB_OUTPUT
+            echo "project_version=${{ steps.pakku_info.outputs.version }}" >> $GITHUB_OUTPUT
           fi
 
           echo "release_type=${{ steps.pakku_info.outputs.release_type }}" >> $GITHUB_OUTPUT
@@ -314,8 +314,10 @@ jobs:
           cd ./build/curseforge/
           ls -la
           if [ -f *.zip ]; then
-            mv *.zip $(basename -s .zip *.zip)-curseforge.zip
-            echo "✔️ Renamed CurseForge artifact"
+            ORIGINAL_FILE=$(ls *.zip | head -1)
+            NEW_FILE="${{ needs.info.outputs.project_full_name }}-curseforge.zip"
+            mv "$ORIGINAL_FILE" "$NEW_FILE"
+            echo "✔️ Renamed $ORIGINAL_FILE to $NEW_FILE"
           else
             echo "❌ No .zip file found in curseforge directory"
             exit 1
@@ -333,8 +335,10 @@ jobs:
           cd ./build/modrinth/
           ls -la
           if [ -f *.mrpack ]; then
-            mv *.mrpack $(basename -s .mrpack *.mrpack)-modrinth.mrpack
-            echo "✔️ Renamed Modrinth artifact"
+            ORIGINAL_FILE=$(ls *.mrpack | head -1)
+            NEW_FILE="${{ needs.info.outputs.project_full_name }}-modrinth.mrpack"
+            mv "$ORIGINAL_FILE" "$NEW_FILE"
+            echo "✔️ Renamed $ORIGINAL_FILE to $NEW_FILE"
           else
             echo "⚠️ No .mrpack file found in modrinth directory"
           fi
@@ -351,8 +355,10 @@ jobs:
           cd ./build/serverpack/
           ls -la
           if [ -f *.zip ]; then
-            mv *.zip $(basename -s .zip *.zip)-serverpack.zip
-            echo "✔️ Renamed serverpack artifact"
+            ORIGINAL_FILE=$(ls *.zip | head -1)
+            NEW_FILE="${{ needs.info.outputs.project_full_name }}-serverpack.zip"
+            mv "$ORIGINAL_FILE" "$NEW_FILE"
+            echo "✔️ Renamed $ORIGINAL_FILE to $NEW_FILE"
           else
             echo "❌ No .zip file found in serverpack directory"
             exit 1
@@ -396,7 +402,7 @@ jobs:
       - name: 📦 Export
         run: |
           curl https://github.com/juraj-hrivnak/pakku/releases/latest/download/pakku.jar -o pakku.jar -L -J
-          java -jar pakku.jar --debug fetch
+          java -jar pakku.jar --debug fetch --force
           java -jar pakku.jar --debug export
           
       - name: 📁 Move files
