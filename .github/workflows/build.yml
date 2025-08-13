@@ -389,7 +389,30 @@ jobs:
           sed -i -e "s/DEV/${VERSION}/g" config/fancymenu/customization/gui_main_menu.txt
           sed -i -e "s/DEV/${VERSION}/g" .pakku/multimc-overrides/instance.cfg
 
-      - name: 📝 Cache pakku
+      - name: � Sync MultiMC mmc-pack.json with lock
+        shell: bash
+        run: |
+          echo "Syncing mmc-pack.json with pakku-lock.json versions..."
+          if [ ! -f pakku-lock.json ]; then echo "pakku-lock.json not found" && exit 1; fi
+          if [ ! -f .pakku/multimc-overrides/mmc-pack.json ]; then echo "mmc-pack.json not found" && exit 1; fi
+
+          MC_VERSION=$(jq -r '.mc_versions[0]' pakku-lock.json)
+          FORGE_VERSION=$(jq -r '.loaders.forge' pakku-lock.json)
+          echo "Desired MC: $MC_VERSION, Forge: $FORGE_VERSION"
+
+          TMP_FILE=$(mktemp)
+          jq --arg mc "$MC_VERSION" --arg forge "$FORGE_VERSION" '
+            (.components[] | select(.uid=="net.minecraft") | .version) = $mc |
+            (.components[] | select(.uid=="net.minecraft") | .cachedVersion) = $mc |
+            (.components[] | select(.uid=="net.minecraftforge") | .version) = $forge |
+            (.components[] | select(.uid=="net.minecraftforge") | .cachedVersion) = $forge
+          ' .pakku/multimc-overrides/mmc-pack.json > "$TMP_FILE"
+          mv "$TMP_FILE" .pakku/multimc-overrides/mmc-pack.json
+
+          echo "MultiMC components after sync:"
+          cat .pakku/multimc-overrides/mmc-pack.json | jq '.components[] | select(.uid=="net.minecraft" or .uid=="net.minecraftforge") | {uid,version,cachedVersion}'
+
+      - name: �📝 Cache pakku
         uses: actions/cache@v4.2.3
         id: cache
         with:
@@ -402,18 +425,43 @@ jobs:
       - name: 📦 Export
         run: |
           curl https://github.com/juraj-hrivnak/pakku/releases/latest/download/pakku.jar -o pakku.jar -L -J
+          echo "Current pakku-lock.json Forge version:"
+          cat pakku-lock.json | jq '.loaders.forge' || echo "Failed to parse pakku-lock"
+          
+          # Clear potentially stale cache
+          rm -rf build/.cache/curseforge/manifest.json 2>/dev/null || true
+          rm -rf build/.cache 2>/dev/null || true
+          
           java -jar pakku.jar --debug fetch
           java -jar pakku.jar --debug export
+          echo "✔️ Export completed"
+          echo "Contents of build directory:"
+          find build -type f -name "*.json" | head -5
           
       - name: 📁 Move files
         run: |
           ls
+          echo "Checking CurseForge manifest content:"
+          if [ -f ./build/.cache/curseforge/manifest.json ]; then
+            echo "Forge version in manifest:"
+            cat ./build/.cache/curseforge/manifest.json | jq '.minecraft.modLoaders[0].id' || echo "Failed to parse manifest"
+          else
+            echo "❌ No manifest.json found in cache"
+            ls -la ./build/.cache/curseforge/
+          fi
+          
           mkdir -p .pakku/multimc-overrides/flame
           mkdir -p .pakku/multimc-overrides/.minecraft
           mv -vf ./build/.cache/curseforge/manifest.json .pakku/multimc-overrides/flame/manifest.json
           mv -vf ./build/.cache/curseforge/overrides .pakku/multimc-overrides/.minecraft
           mv -vf ./mods .pakku/multimc-overrides/.minecraft/
           cd .pakku/multimc-overrides/
+          
+          echo "Final manifest check:"
+          cat flame/manifest.json | jq '.minecraft.modLoaders[0].id' || echo "Failed to parse final manifest"
+
+          echo "Final mmc-pack.json components in zip root:"
+          cat mmc-pack.json | jq '.components[] | select(.uid=="net.minecraft" or .uid=="net.minecraftforge") | {uid,version,cachedVersion}'
           
           zip -r ${{ needs.info.outputs.project_full_name }}-multimc.zip icon.png mmc-pack.json instance.cfg .minecraft/ flame/
       
